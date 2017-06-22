@@ -1,0 +1,10 @@
+<?php
+
+namespace templesuite\migrations\controllers;
+
+use yii\console\controllers\MigrateController;
+
+class SchemaController extends MigrateController {
+	public $migrationPath = '@app/migrations/schema';
+	public $migrationTable = '{{%migration}}';
+}

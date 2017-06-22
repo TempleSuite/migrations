@@ -1,0 +1,101 @@
+<?php
+
+namespace templesuite\migrations\controllers;
+
+use common\models\ar\User;
+use common\models\ar\Address;
+
+use yii\console\controllers\MigrateController;
+
+class SeedController extends MigrateController {
+	public $migrationPath = '@app/migrations/seed';
+	public $migrationTable = '{{%migration_seed}}';
+
+	public function actionSeedUsers($amount)
+	{
+		$faker = \Faker\Factory::create();
+
+		for($i = 0; $i < $amount; $i++) {
+			$user = new User();
+			$user->username = $faker->username;
+			$user->auth_key = "tGCs44xKBiisFgRWneis_jchrr2eaPwF";
+			$user->password_hash = '$2y$13$Fl.9GMnKb7TXrj67EgN/zOCG0a8LOdWKgflLxHVGIca7QthNPT/oi';
+			$user->password_reset_token = null;
+			$user->email = $faker->email;
+			$user->primary_phone_number = $this->fakerPhoneNumber($faker);
+			$user->first_name = $faker->firstName;
+			$user->last_name = $faker->lastName;
+			$user->middle_name = $faker->firstName;
+			$user->title = null;
+			$user->date_of_birth = $faker->date('Y-m-d', 'now');
+			$user->gender = 'male';
+			$user->status = 10;
+			$user->mais_customer_id = null;
+			$user->refund_status = 0;
+			$user->school_grade = null;
+			$user->account_verified = 1;
+			$user->additional_data = null;
+			$user->marital_status = null;
+			$user->income = null;
+			$user->ethnicity = null;
+			$user->user_image = null;
+			$user->religion = null;
+			$user->occupation = null;
+			$user->social_insurance_num = null;
+			$user->discount_percent = 0;
+			$user->is_taxable = 0;
+			$user->biography = $faker->text;
+			$user->resident_type = 0;
+			$user->file_id = null;
+			$user->rfid = null;
+			
+			if($user->save()) {
+				echo "USER YES".PHP_EOL;
+				$address = new Address;
+				$address->entity_id = $user->id;
+				$address->table_name = 'user';
+				$address->country = $faker->country;
+				$address->state = $faker->stateAbbr;
+				$address->city = $faker->city;
+				$address->postal_code = $faker->postcode;
+				$address->street1 = $faker->streetAddress;
+				$address->phone_number = $this->fakerPhoneNumber($faker);
+				$address->is_primary = 1;
+				if($address->save()) {
+					echo "ADDRESS YES".PHP_EOL;
+				} else {
+					echo "ADDRESS NO".PHP_EOL;
+				}
+				$auth = \Yii::$app->authManager;
+                $userRole = $auth->getRole('user');
+                if($auth->assign($userRole,$user->id)) {
+                	echo "USER ROLE YES".PHP_EOL;
+                } else {
+                	echo "USER ROLE NO".PHP_EOL;
+                }
+
+
+			} else {
+				echo "USER_NO".PHP_EOL;
+			}
+
+		}
+
+	}
+
+	public function actionDeleteSeeds() 
+	{
+		foreach(User::find()->where(['!=', 'id', 6])->all() as $user) {
+			$user->delete();
+		}
+
+		foreach(Address::find()->all() as $address) {
+			$address->delete();
+		}
+	}
+
+	protected function fakerPhoneNumber($faker)
+	{
+		return $faker->randomDigit . $faker->randomDigit . $faker->randomDigit . "-" . $faker->randomDigit . $faker->randomDigit . $faker->randomDigit . "-" . $faker->randomDigit . $faker->randomDigit . $faker->randomDigit . $faker->randomDigit ;
+	}
+}

@@ -1,0 +1,140 @@
+<?php
+
+namespace templesuite\migrations\controllers;
+
+use Yii;
+use yii\console\Controller;
+use common\models\ar\SystemConfiguration;
+use console\models\Migration;
+use common\models\ar\User;
+
+// this is the main class for our Schema and Seed CLI tools.
+// all methods are run in the CLI with: 'php yii db/$COMMAND'
+class DbController extends Controller
+{
+
+	public $schemaPath;
+	public $seedPath;
+
+	public $defaultSchemaPath = '@app/migrations/schema';
+	public $defaultSeedPath = '@app/migrations/seed';
+
+	public function options($actionId)
+	{
+		return ['schemaPath', 'seedPath'];
+	}
+
+	// ups schema then seed, prompts for confirmation on both
+	// command: php yii db/up
+	public function actionUp($limit = '')
+	{
+		$limit = $limit ? '/'.$limit : $limit;
+		$this->setPaths();
+		
+		echo "============ MIGRATING IN PATH {$this->schemaPath} ==========".PHP_EOL;
+		$this->runCommand('schema/up', $this->schemaPath);
+
+		echo "============ MIGRATING IN PATH {$this->seedPath} ==========".PHP_EOL;
+		$this->runCommand('seed/up', $this->seedPath);
+		
+		if(defined('YII_ENV') && YII_ENV == YII_ENV_DEV) {
+			if($this->confirm('Import Database?')) $this->actionImport('dev');
+		} else {
+			if($this->confirm('Import Database?')) $this->actionImport('production');
+		}
+		return 0;
+
+	}
+
+	// downs seeds then schema, prompts for confirmation on both
+	// command: php yii db/down
+	public function actionDown($limit = 0)
+	{
+		$this->setPaths();
+
+		echo "============ MIGRATING IN PATH {$this->seedPath} ==========".PHP_EOL;
+		$this->runCommand('seed/down', $this->seedPath);
+		echo "============ MIGRATING IN PATH {$this->schemaPath} ==========".PHP_EOL;
+		$this->runCommand('schema/down', $this->schemaPath);
+	}
+
+	// downs only the seed
+	// command: php yii db/down-seed
+	public function actionDownSeed()
+	{
+		$this->setPaths();
+
+		$this->runCommand('seed/down', $this->seedPath);
+	}
+
+	// ups only the seed
+	// command: php yii db/up-seed
+	public function actionUpSeed()
+	{
+		$this->setPaths();
+
+		$this->runCommand('seed/up', $this->seedPath);
+	}
+
+	// downs only the schema
+	// command: php yii db/down-schema
+	public function actionDownSchema()
+	{
+		$this->setPaths();
+
+		$this->runCommand('seed/down', $this->schemaPath);
+	}
+
+	// ups only the schema
+	// command: php yii db/up-schema
+	public function actionUpSchema()
+	{
+		$this->setPaths();
+
+		$this->runCommand('seed/up', $this->schemaPath);
+	}
+
+	// imports the file dbexport at our seed location.
+	// command: php yii db/import
+	public function actionImport($type)
+	{
+	   $this->wipeSystemConfig();
+	   $importPath = $type == 'dev' ? $this->devImportPath : $this->productionImportPath;
+       $sql = file_get_contents($importPath);
+       if(!$sql) echo 'No import file found at' . $importPath;
+       Yii::$app->db->createCommand($sql)->execute();
+       echo $importPath . ' successfully imported';
+	}
+
+	// pass a yii migrate console command as a string, and the path.
+	protected function runCommand($which, $path)
+	{
+		Yii::$app->runAction($which, ['migrationPath' => $path]);
+	}
+
+	// just for our dummy database dpexport that has a conflict with our sysconfig. not for production.
+	protected function wipeSystemConfig()
+	{
+		$sys = SystemConfiguration::findOne(1);
+	    if($sys && $sys->address == '123 Bobcat St.') $sys->delete();
+	}
+	
+	// provider optional parameters schemaPath or seedPath to override the defaults
+	protected function setPaths()
+	{
+		$this->schemaPath = $this->schemaPath ?? $this->defaultSchemaPath;
+		$this->seedPath = $this->seedPath ?? $this->defaultSeedPath;
+	}
+
+	// hard-coded import path. can make modular like schema/seed if need be but i think this is fine.
+	protected function getDevImportPath()
+	{
+		return Yii::getAlias('@app').DIRECTORY_SEPARATOR.'migrations'.DIRECTORY_SEPARATOR.'seed'.DIRECTORY_SEPARATOR.'dbexport.sql';
+	}
+	// hard-coded import path. can make modular like schema/seed if need be but i think this is fine.
+	protected function getProductionImportPath()
+	{
+		return Yii::getAlias('@app').DIRECTORY_SEPARATOR.'migrations'.DIRECTORY_SEPARATOR.'sqldump'.DIRECTORY_SEPARATOR.'production_init.sql';
+	}
+
+}
